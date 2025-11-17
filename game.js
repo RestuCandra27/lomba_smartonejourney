@@ -13,8 +13,9 @@ const rollBtn = document.getElementById("rollBtn");
 const diceValueEl = document.getElementById("diceValue");
 const turnInfoEl = document.getElementById("turnInfo");
 const startBtn = document.getElementById("startBtn");
-const playerCountSel = document.getElementById("playerCount");
-const categorySel = document.getElementById("categorySel");
+const playerCountGroup = document.getElementById("player-count-group");
+const playerChoices = playerCountGroup.querySelectorAll(".btn-choice");
+
 const quizModal = document.getElementById("quizModal");
 const quizQuestion = document.getElementById("quizQuestion");
 const quizChoices = document.getElementById("quizChoices");
@@ -71,8 +72,11 @@ let currentEduText = {};
 // Pemain
 const tokenColors = ["#22d3ee", "#fbbf24", "#ef4444", "#22c55e"];
 let players = [];
+let selectedPlayerCount = 2; // Default 2 pemain
+let selectedCategoryKey = null; // Simpan kategori yg dipilih
 let turn = 0;
 let started = false;
+
 
 // --- ⭐ UPDATE: Konfigurasi Level & Bonus ---
 const LEVEL_THRESHOLDS = { // minimal poin untuk naik ke level selanjutnya
@@ -97,7 +101,7 @@ async function loadGameData() {
     populateCategorySelect();
 
     startBtn.disabled = false;
-    startBtn.textContent = "YOK Mulai"; // <-- Ganti teks tombol
+    startBtn.textContent = "Yok Mulai"; // <-- Ganti teks tombol
 
   } catch (err) {
     console.error("Gagal memuat data_game.json:", err);
@@ -106,15 +110,42 @@ async function loadGameData() {
 }
 
 // --- FUNGSI BARU: Mengisi Dropdown Kategori ---
+// SEKARANG MENGISI CARD GROUP
 function populateCategorySelect() {
   if (!allGameData) return;
-  categorySel.innerHTML = "";
-  const categories = Object.keys(allGameData.kategori);
-  categories.forEach(key => {
-    const option = document.createElement("option");
-    option.value = key;
-    option.textContent = allGameData.kategori[key].nama;
-    categorySel.appendChild(option);
+
+  // Target elemen baru
+  const categoryGroup = document.getElementById("category-card-group");
+  // Hapus dropdown lama (untuk bersih-bersih)
+  // categorySel.innerHTML = ""; 
+  // Kosongkan grup kartu
+  categoryGroup.innerHTML = ""; 
+
+  const categories = Object.keys(allGameData.kategori); //
+
+  categories.forEach((key, index) => {
+    const card = document.createElement("div");
+    card.className = "card-choice";
+    card.textContent = allGameData.kategori[key].nama; //
+    card.dataset.key = key; // Simpan 'key' (mis: "keuangan")
+
+    // Otomatis pilih item pertama
+    if (index === 0) {
+      card.classList.add("selected");
+      selectedCategoryKey = key;
+    }
+
+    // Tambah listener
+    card.addEventListener("click", () => {
+      // Hapus 'selected' dari semua kartu
+      categoryGroup.querySelectorAll(".card-choice").forEach(c => c.classList.remove("selected"));
+      // Tambah 'selected' ke kartu ini
+      card.classList.add("selected");
+      // Simpan nilainya
+      selectedCategoryKey = card.dataset.key;
+    });
+
+    categoryGroup.appendChild(card);
   });
 }
 
@@ -253,6 +284,18 @@ function updatePionPosition(player) {
   pion.style.left = `${Math.round(left)}px`;
   pion.style.top = `${Math.round(top)}px`;
 }
+
+// --- FUNGSI BARU: Listener untuk Tombol Pilihan Pemain ---
+playerChoices.forEach(button => {
+  button.addEventListener("click", () => {
+    // Hapus 'selected' dari semua tombol
+    playerChoices.forEach(btn => btn.classList.remove("selected"));
+    // Tambah 'selected' ke tombol yg diklik
+    button.classList.add("selected");
+    // Simpan nilainya
+    selectedPlayerCount = Number(button.dataset.value);
+  });
+});
 
 // Pindahkan semua pion
 function placeAllPions() {
@@ -561,8 +604,8 @@ rollBtn.addEventListener("click", async () => {
 // --- MODIFIKASI 4: Ganti startBtn listener ---
 startBtn.addEventListener("click", () => {
   // 1. Ambil nilai dari SEMUA pilihan setup
-  const n = Math.max(2, Math.min(4, Number(playerCountSel.value || 2)));
-  const categoryKey = categorySel.value;
+  const n = selectedPlayerCount; // <--lebih simpel!
+  const categoryKey = selectedCategoryKey; // <-- Ambil dari variabel baru
 
   // 2. Set data global berdasarkan kategori yg dipilih
   const selectedCategory = allGameData.kategori[categoryKey];
