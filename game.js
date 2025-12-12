@@ -76,7 +76,7 @@ let started = false;
 // [BARU] Flag untuk mencegah spam klik dadu
 let isProcessingTurn = false;
 
-const LEVEL_THRESHOLDS = { 2: 130000, 3: 300000 };
+const LEVEL_THRESHOLDS = { 2: 100000, 3: 230000 };
 const BONUS_BY_LEVEL = { 1: 15000, 2: 8000, 3: 5000 };
 
 // --- EVENT LISTENER SIDEBAR ---
@@ -211,7 +211,7 @@ function createPlayers(n = 2) {
     name: `P${i + 1}`,
     color: tokenColors[i % tokenColors.length],
     pos: 0,
-    points: 2000,
+    points: 20000,
     savingsPoints: 0, // Tabungan awal 0
     laps: 0,
     level: 1,
