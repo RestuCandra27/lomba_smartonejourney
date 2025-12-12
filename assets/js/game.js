@@ -76,6 +76,12 @@ let started = false;
 // [BARU] Flag untuk mencegah spam klik dadu
 let isProcessingTurn = false;
 
+// [BARU] Audio Background
+let backsound = null;
+let diceSound = null; // [BARU] Dice Audio
+let pionSound = null; // [BARU] Pion Audio
+let isMuted = false;
+
 const LEVEL_THRESHOLDS = { 2: 100000, 3: 230000 };
 const BONUS_BY_LEVEL = { 1: 15000, 2: 8000, 3: 5000 };
 
@@ -101,6 +107,7 @@ async function loadGameData() {
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     allGameData = await response.json();
     populateCategorySelect();
+    initMusic(); // [BARU] Preload audio lebih awal
     startBtn.disabled = false;
     startBtn.textContent = "Yok Mulai";
   } catch (err) {
@@ -892,6 +899,7 @@ function rollDiceAnimated() {
     diceEl.classList.add("roll");
 
     setTimeout(() => {
+      stopDiceSound(); // [BARU] Stop suara saat animasi selesai
       diceEl.classList.remove("roll");
       // Tampilkan sisi yang benar
       diceContainer.classList.add("show-" + result);
@@ -909,6 +917,7 @@ function rollDiceAnimated() {
 async function movePlayerAnimated(player, steps) {
   const ringLen = path.length;
   for (let i = 0; i < steps; i++) {
+    playPionSound(); // [BARU] Sound per langkah
     const oldPos = player.pos;
     player.pos = (player.pos + 1) % ringLen;
 
@@ -992,21 +1001,49 @@ function highlightLanding(index) {
 
 /**
  * playDiceSound
- * SFX sederhana menggunakan Web Audio API untuk suara dadu.
+ * Memainkan suara dice.mp3, looping selama animasi.
  */
 function playDiceSound() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = "triangle";
-    o.frequency.setValueAtTime(120, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
-    o.connect(g).connect(ctx.destination);
-    o.start();
-    o.stop(ctx.currentTime + 0.3);
-  } catch (e) {
-    /* ignore */
+  if (isMuted) return; // Cek mute global
+
+  if (!diceSound) {
+    diceSound = new Audio("assets/sound/dice.mp3");
+    diceSound.loop = true; // Looping saat berputar
+    diceSound.volume = 1.0;
+  }
+
+  diceSound.currentTime = 0;
+  diceSound.play().catch(e => console.log("Dice play error:", e));
+}
+
+/**
+ * playPionSound
+ * Memainkan efek suara langkah pion.
+ * Menggunakan cloneNode() agar bisa overlapping (spam cepat).
+ */
+function playPionSound() {
+  if (isMuted) return;
+
+  if (!pionSound) {
+    pionSound = new Audio("assets/sound/pion2.mp3");
+    pionSound.volume = 1.0;
+  }
+
+  // Clone node agar bisa dimainkan berulang kali secara paralel
+  const soundClone = pionSound.cloneNode(true);
+  soundClone.play().catch(e => {
+    // Ignore autoplay errors
+  });
+}
+
+/**
+ * stopDiceSound
+ * Menghentikan suara dadu seketika.
+ */
+function stopDiceSound() {
+  if (diceSound) {
+    diceSound.pause();
+    diceSound.currentTime = 0;
   }
 }
 
@@ -1043,6 +1080,84 @@ diceEl.addEventListener("click", async () => {
 
   setTimeout(scrollToTurnPanel, 500);
 });
+
+/**
+ * Memuat file `data_game.json` dan menginisialisasi
+ * data permainan (kategori, quiz, tiles).
+ * Menangani error jika fetch gagal.
+ */
+async function loadGameData() {
+  try {
+    const response = await fetch("assets/data/data_game.json");
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    allGameData = await response.json();
+    populateCategorySelect();
+    initMusic(); // [BARU] Preload audio lebih awal
+    startBtn.disabled = false;
+    startBtn.textContent = "Yok Mulai";
+  } catch (err) {
+    console.error("Gagal memuat data_game.json:", err);
+    turnInfoEl.textContent = "Error: Gagal memuat data.";
+  }
+}
+
+// === LOGIKA AUDIO BACKGROUND ===
+function initMusic() {
+  // 1. Backsound Loop
+  if (!backsound) {
+    backsound = new Audio("assets/sound/backsound.mp3");
+    backsound.loop = true;
+    backsound.volume = 0.5;
+    backsound.preload = "auto";
+  }
+
+  // 2. Preload Dice Sound
+  if (!diceSound) {
+    diceSound = new Audio("assets/sound/dice.mp3");
+    diceSound.loop = true;
+    diceSound.volume = 1.0;
+    diceSound.preload = "auto";
+    diceSound.load(); // Paksa browser download
+  }
+
+  // 3. Preload Pion Sound
+  if (!pionSound) {
+    pionSound = new Audio("assets/sound/pion2.mp3");
+    pionSound.volume = 1.0;
+    pionSound.preload = "auto";
+    pionSound.load(); // Paksa browser download
+  }
+}
+
+function playMusic() {
+  initMusic();
+  if (!isMuted && backsound) {
+    backsound.play().catch(e => console.log("Audio play failed (interaction needed):", e));
+  }
+}
+
+function stopMusic() {
+  if (backsound) {
+    backsound.pause();
+    backsound.currentTime = 0;
+  }
+}
+
+function toggleMute() {
+  isMuted = !isMuted;
+  const btn = document.getElementById("muteBtn");
+
+  if (isMuted) {
+    if (backsound) backsound.pause();
+    if (btn) btn.textContent = "🔇";
+    if (btn) btn.classList.add("muted");
+  } else {
+    if (backsound && started) backsound.play().catch(e => console.log(e));
+    if (btn) btn.textContent = "🔊";
+    if (btn) btn.classList.remove("muted");
+  }
+}
+
 // =============================================
 
 // Klik Tombol Mulai (Start)
@@ -1092,6 +1207,9 @@ function startGameSession(playerCount, categoryKey) {
   if (gameOverOverlay) gameOverOverlay.classList.remove("active");
 
   setTimeout(placeAllPions, 150);
+
+  // Mulai Musik
+  playMusic();
 }
 
 function updatePlayerLevel(player) {
@@ -1161,6 +1279,9 @@ if (backBtnGame) {
     // Reset pion dan info pemain
     pionEls.forEach((p) => (p.style.display = "none"));
     playerInfoBoxes.forEach((box) => (box.style.display = "none"));
+
+    // Stop Musik
+    stopMusic();
   });
 }
 
@@ -1449,4 +1570,6 @@ function resetGameToMenu() {
 
   pionEls.forEach((p) => (p.style.display = "none"));
   playerInfoBoxes.forEach((box) => (box.style.display = "none"));
+
+  stopMusic();
 }

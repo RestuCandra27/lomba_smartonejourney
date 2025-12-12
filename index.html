@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SmartOne Journey</title>
 
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
 
@@ -20,11 +20,11 @@
 
     <div class="landing-container">
       <div class="header-logos">
-        <img src="Logo_sekolah.png" alt="Logo Sekolah" class="logo-img logo-school">
+        <img src="assets/images/Logo_sekolah.png" alt="Logo Sekolah" class="logo-img logo-school">
 
         <div class="divider"></div>
 
-        <img src="logo_iso.png" alt="Logo ISO" class="logo-img logo-iso">
+        <img src="assets/images/logo_iso.png" alt="Logo ISO" class="logo-img logo-iso">
       </div>
       <h1>SmartOne Journey 🚀</h1>
       <p>Jelajahi Dunia Pengetahuan!</p>
@@ -82,6 +82,9 @@
       <span></span>
       <span></span>
       <span></span>
+    </button>
+    <button id="muteBtn" class="btn-mute" onclick="toggleMute()" aria-label="Toggle Music">
+      🔊
     </button>
 
     <div class="center-area">
@@ -225,7 +228,7 @@
     </div>
   </dialog>
 
-  <script src="game.js"></script>
+  <script src="assets/js/game.js"></script>
   <!-- WINNER MODAL -->
   <div id="winnerModal" class="winner-modal">
     <div id="confetti-container"></div>
