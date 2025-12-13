@@ -14,6 +14,8 @@ const startBtn = document.getElementById("startBtn");
 const playerCountGroup = document.getElementById("player-count-group");
 const playerChoices = playerCountGroup.querySelectorAll(".btn-choice");
 
+const POINTPLAYERS = 500;
+
 // --- ELEMENT MODAL KUIS ---
 const quizModal = document.getElementById("quizModal");
 const quizQuestion = document.getElementById("quizQuestion");
@@ -78,6 +80,7 @@ let isProcessingTurn = false;
 
 // [BARU] Audio Background
 let backsound = null;
+let winnerSound = null; // [BARU] Winner Sound
 let diceSound = null; // [BARU] Dice Audio
 let pionSound = null; // [BARU] Pion Audio
 let isMuted = false;
@@ -218,7 +221,7 @@ function createPlayers(n = 2) {
     name: `P${i + 1}`,
     color: tokenColors[i % tokenColors.length],
     pos: 0,
-    points: 20000,
+    points: POINTPLAYERS,
     savingsPoints: 0, // Tabungan awal 0
     laps: 0,
     level: 1,
@@ -547,51 +550,66 @@ function handleExpense(player, amount) {
  * ikon sesuai tipe, nominal, dan deskripsi edukasi.
  */
 function showTilePopup(type, title, amount, desc) {
-  // 1. Tentukan Ikon berdasarkan tipe
-  let icon = "📄";
-  if (type === T.INCOME) icon = "💰";
-  else if (type === T.EXPENSE) icon = "💸";
-  else if (type === T.TAX) icon = "🏦";
-  else if (type === T.SAVE) icon = "🐷";
-  else if (type === T.PENALTY) icon = "⚠️";
-  else if (type === T.BONUS) icon = "🎁";
-  else if (type === T.START) icon = "🚀";
+  return new Promise((resolve) => {
+    // 1. Tentukan Ikon berdasarkan tipe
+    let icon = "📄";
+    if (type === T.INCOME) icon = "💰";
+    else if (type === T.EXPENSE) icon = "💸";
+    else if (type === T.TAX) icon = "🏦";
+    else if (type === T.SAVE) icon = "🤖";
+    else if (type === T.PENALTY) icon = "⚠️";
+    else if (type === T.BONUS) icon = "🎁";
+    else if (type === T.START) icon = "🚀";
 
-  // 2. Format Nominal (Plus/Minus)
-  let amountClass = "neutral";
-  let amountText = "";
+    // 2. Format Nominal (Plus/Minus)
+    let amountClass = "neutral";
+    let amountText = "";
 
-  if (typeof amount === 'number') {
-    if (amount > 0) {
-      amountClass = "plus";
-      amountText = "+ " + fmt(amount);
-    } else if (amount < 0) {
-      amountClass = "minus";
-      amountText = "- " + fmt(Math.abs(amount));
+    if (typeof amount === 'number') {
+      if (amount > 0) {
+        amountClass = "plus";
+        amountText = "+ " + fmt(amount);
+      } else if (amount < 0) {
+        amountClass = "minus";
+        amountText = "- " + fmt(Math.abs(amount));
+      }
+    } else {
+      amountText = amount; // Jika teks (misal: "Jawab Kuis!")
     }
-  } else {
-    amountText = amount; // Jika teks (misal: "Jawab Kuis!")
-  }
 
-  // 3. Susun HTML
-  const html = `
-    <div class="notif-content">
-      <div class="notif-icon-box">${icon}</div>
-      <div class="notif-title-box">${title}</div>
-      <div class="notif-amount-box ${amountClass}">${amountText}</div>
-      ${desc ? `<div class="notif-desc-box">"${desc}"</div>` : ''}
-    </div>
-  `;
+    // 3. Susun HTML - Tambah Tombol OK
+    const html = `
+      <div class="notif-content">
+        <div class="notif-icon-box">${icon}</div>
+        <div class="notif-title-box">${title}</div>
+        <div class="notif-amount-box ${amountClass}">${amountText}</div>
+        ${desc ? `<div class="notif-desc-box">"${desc}"</div>` : ''}
+        <button id="popupCloseBtn" class="popup-close-btn">OK</button>
+      </div>
+    `;
 
-  // 4. Tampilkan pakai notifPopup yang sudah ada
-  notifPopup.innerHTML = html;
-  notifPopup.classList.add("show");
+    // 4. Tampilkan pakai notifPopup yang sudah ada
+    notifPopup.innerHTML = html;
+    notifPopup.classList.add("show");
 
-  // Timer hilang
-  clearTimeout(notifPopup._t);
-  notifPopup._t = setTimeout(() => {
-    notifPopup.classList.remove("show");
-  }, 2500); // 2.5 detik biar sempat baca
+    // Hapus timer lama (jika ada sisa)
+    if (notifPopup._t) clearTimeout(notifPopup._t);
+
+    // 5. Event Listener Tombol Close
+    const btn = document.getElementById("popupCloseBtn");
+    if (btn) {
+      btn.onclick = () => {
+        notifPopup.classList.remove("show");
+        resolve(); // Lanjut game setelah klik OK
+      };
+    } else {
+      // Fallback safety
+      setTimeout(() => {
+        notifPopup.classList.remove("show");
+        resolve();
+      }, 3000);
+    }
+  });
 }
 
 // game.js - Update resolveTile
@@ -621,7 +639,7 @@ async function resolveTile(player) {
       pointChange = tile.points;
       pointType = "plus";
       player.points += tile.points;
-      showTilePopup(T.INCOME, tile.title, tile.points, eduText);
+      await showTilePopup(T.INCOME, tile.title, tile.points, eduText);
       break;
 
     case T.EXPENSE:
@@ -630,7 +648,7 @@ async function resolveTile(player) {
       if (survivedExp) {
         pointChange = -expenseCost;
         pointType = "minus";
-        showTilePopup(T.EXPENSE, tile.title, -expenseCost, eduText);
+        await showTilePopup(T.EXPENSE, tile.title, -expenseCost, eduText);
       }
       break;
 
@@ -639,7 +657,7 @@ async function resolveTile(player) {
       player.points -= cut;
       pointChange = -cut;
       pointType = "minus";
-      showTilePopup(T.TAX, tile.title, -cut, `Pajak ${tile.percent}% dari poinmu.`);
+      await showTilePopup(T.TAX, tile.title, -cut, `Pajak ${tile.percent}% dari poinmu.`);
       break;
 
     case T.SAVE:
@@ -649,14 +667,14 @@ async function resolveTile(player) {
         // Animasi minus dulu (masuk tabungan)
         pointChange = -tile.points;
         pointType = "minus";
-        showTilePopup(T.SAVE, tile.title, tile.points, "Uang diamankan ke Tabungan.");
+        await showTilePopup(T.SAVE, tile.title, tile.points, "Uang diamankan ke Tabungan.");
       } else {
-        showTilePopup(T.SAVE, "Gagal Menabung", "Gagal", "Poin di tangan tidak cukup.");
+        await showTilePopup(T.SAVE, "Gagal Menabung", "Gagal", "Poin di tangan tidak cukup.");
       }
       break;
 
     case T.BONUS:
-      showTilePopup(T.BONUS, tile.title, "KUIS!", "Jawab benar dapat poin.");
+      await showTilePopup(T.BONUS, tile.title, "KUIS!", "Jawab benar dapat poin.");
       runQuiz = true;
       break;
 
@@ -666,12 +684,12 @@ async function resolveTile(player) {
       if (survivedPen) {
         pointChange = -penaltyCost;
         pointType = "minus";
-        showTilePopup(T.PENALTY, tile.title, -penaltyCost, "Denda pelanggaran.");
+        await showTilePopup(T.PENALTY, tile.title, -penaltyCost, "Denda pelanggaran.");
       }
       break;
 
     case T.START:
-      showTilePopup(T.START, "Start Point", "", "Siap putaran baru!");
+      await showTilePopup(T.START, "Start Point", "", "Siap putaran baru!");
       break;
   }
 
@@ -1101,6 +1119,8 @@ async function loadGameData() {
   }
 }
 
+// [REMOVED DUPLICATE VARS]
+
 // === LOGIKA AUDIO BACKGROUND ===
 function initMusic() {
   // 1. Backsound Loop
@@ -1111,26 +1131,40 @@ function initMusic() {
     backsound.preload = "auto";
   }
 
-  // 2. Preload Dice Sound
+  // [BARU] 2. Winner Sound
+  if (!winnerSound) {
+    winnerSound = new Audio("assets/sound/winner.mp3");
+    winnerSound.loop = true;
+    winnerSound.volume = 0.6;
+    winnerSound.preload = "auto";
+  }
+
+  // 3. Preload Dice Sound
   if (!diceSound) {
     diceSound = new Audio("assets/sound/dice.mp3");
     diceSound.loop = true;
     diceSound.volume = 1.0;
     diceSound.preload = "auto";
-    diceSound.load(); // Paksa browser download
+    diceSound.load();
   }
 
-  // 3. Preload Pion Sound
+  // 4. Preload Pion Sound
   if (!pionSound) {
     pionSound = new Audio("assets/sound/pion2.mp3");
     pionSound.volume = 1.0;
     pionSound.preload = "auto";
-    pionSound.load(); // Paksa browser download
+    pionSound.load();
   }
 }
 
 function playMusic() {
   initMusic();
+  // Pastikan winner sound mati saat main
+  if (winnerSound) {
+    winnerSound.pause();
+    winnerSound.currentTime = 0;
+  }
+
   if (!isMuted && backsound) {
     backsound.play().catch(e => console.log("Audio play failed (interaction needed):", e));
   }
@@ -1141,6 +1175,10 @@ function stopMusic() {
     backsound.pause();
     backsound.currentTime = 0;
   }
+  if (winnerSound) {
+    winnerSound.pause();
+    winnerSound.currentTime = 0;
+  }
 }
 
 function toggleMute() {
@@ -1149,10 +1187,20 @@ function toggleMute() {
 
   if (isMuted) {
     if (backsound) backsound.pause();
+    if (winnerSound) winnerSound.pause(); // Mute winner sound too
     if (btn) btn.textContent = "🔇";
     if (btn) btn.classList.add("muted");
   } else {
-    if (backsound && started) backsound.play().catch(e => console.log(e));
+    // Resume music logic
+    // Cek apakah sedang winner modal? Agak kompleks valuenya.
+    // Simpelnya: jika started, play backsound. Jika winner modal show?
+    const winnerModal = document.getElementById("winnerModal");
+    if (winnerModal && winnerModal.classList.contains("show")) {
+      if (winnerSound) winnerSound.play().catch(e => console.log(e));
+    } else if (backsound && started) {
+      backsound.play().catch(e => console.log(e));
+    }
+
     if (btn) btn.textContent = "🔊";
     if (btn) btn.classList.remove("muted");
   }
@@ -1360,6 +1408,7 @@ const goTitle = document.getElementById('goTitle');
 const goMessage = document.getElementById('goMessage');
 
 // 2. Fungsi Menampilkan Modal Custom
+// 2. Fungsi Menampilkan Modal Custom
 function showCustomModal(title, message, isWin = false, isTotalGameOver = true) {
   // Set konten teks
   goTitle.textContent = title;
@@ -1372,6 +1421,13 @@ function showCustomModal(title, message, isWin = false, isTotalGameOver = true) 
     if (isWin) {
       box.style.borderColor = '#22c55e';
       goTitle.style.color = '#22c55e';
+
+      // [BARU] START WINNER MUSIC
+      if (backsound) backsound.pause();
+      if (winnerSound) {
+        winnerSound.currentTime = 0;
+        winnerSound.play().catch(e => console.log(e));
+      }
     } else {
       box.style.borderColor = '#ef4444';
       goTitle.style.color = '#ef4444';
@@ -1389,7 +1445,14 @@ function showCustomModal(title, message, isWin = false, isTotalGameOver = true) 
 
       const btnRestart = document.createElement('button');
       btnRestart.textContent = "Main Lagi";
-      btnRestart.onclick = () => restartGame();
+      btnRestart.onclick = () => {
+        // Stop winner sound & play backsound
+        if (winnerSound) {
+          winnerSound.pause();
+          winnerSound.currentTime = 0;
+        }
+        restartGame();
+      };
 
       const btnMenu = document.createElement('button');
       btnMenu.textContent = "Menu Utama";
@@ -1399,6 +1462,9 @@ function showCustomModal(title, message, isWin = false, isTotalGameOver = true) 
         if (gameOverOverlay) gameOverOverlay.classList.remove('active');
         document.getElementById("screen-game").classList.remove("active");
         document.getElementById("screen-setup").classList.add("active");
+
+        // Stop all music
+        stopMusic();
 
         // Reset variable global
         started = false;
@@ -1497,8 +1563,6 @@ function checkWinnerBySurvival() {
  * pada mode survival (multiplayer).
  */
 
-loadGameData();
-
 /* ======================================================
   12. WINNER MODAL & CONFETTI LOGIC
 ====================================================== */
@@ -1533,7 +1597,13 @@ function showWinnerModal(name) {
   if (winnerNameEl) winnerNameEl.textContent = name;
   winnerModal.classList.add("show");
   createConfetti();
-  playDiceSound(); // Optional: sound effect
+
+  // [BARU] Stop backsound, play winner sound
+  if (backsound) backsound.pause();
+  if (winnerSound) {
+    winnerSound.currentTime = 0;
+    winnerSound.play().catch(e => console.log("Winner sound play error:", e));
+  }
 }
 
 function createConfetti() {
@@ -1573,3 +1643,78 @@ function resetGameToMenu() {
 
   stopMusic();
 }
+
+/**
+ * updateTurnIndicator
+ * Highlight panel pemain yang sedang giliran.
+ * [UPDATED] Safe Visuals (Glow + Scale via CSS)
+ */
+function updateTurnIndicator() {
+  players.forEach((p, index) => {
+    const box = playerInfoBoxes[index];
+    if (!box) return;
+
+    if (index === turn % players.length) {
+      box.classList.add("active-turn");
+      box.style.setProperty('--player-color', p.color);
+      // Hapus inline interference
+      box.style.border = "";
+      box.style.transform = "";
+    } else {
+      box.classList.remove("active-turn");
+      box.style.removeProperty('--player-color');
+      // Reset defaults
+      box.style.border = "none";
+      box.style.transform = "scale(1)";
+    }
+  });
+}
+
+/* ======================================================
+   13. LOADING LOGIC
+====================================================== */
+function performInitialLoading() {
+  const overlay = document.getElementById("loading-overlay");
+  const bar = document.getElementById("progressBar");
+  const txt = document.getElementById("loadingText");
+  const landing = document.getElementById("screen-landing");
+
+  if (overlay) overlay.classList.remove("hidden");
+
+  // Load Data
+  loadGameData().then(() => {
+    console.log("Data loaded for Loading Screen");
+  });
+
+  // Simulasi Progress
+  let width = 0;
+  const timer = setInterval(() => {
+    width += Math.random() * 12;
+    if (width > 100) width = 100;
+
+    if (bar) bar.style.width = width + "%";
+
+    // Text changes
+    if (txt) {
+      if (width < 40) txt.textContent = "Menghubungkan ke server...";
+      else if (width < 70) txt.textContent = "Memuat aset permainan...";
+      else if (width < 90) txt.textContent = "Menyiapkan papan...";
+      else txt.textContent = "Siap bermain!";
+    }
+
+    if (width >= 100) {
+      clearInterval(timer);
+      setTimeout(() => {
+        if (overlay) overlay.classList.add("hidden");
+        if (landing) landing.classList.add("active");
+      }, 500);
+    }
+  }, 200);
+}
+
+// Init when DOM ready
+document.addEventListener("DOMContentLoaded", () => {
+  performInitialLoading();
+});
+
+// loadGameData(); // Moved to performInitialLoading

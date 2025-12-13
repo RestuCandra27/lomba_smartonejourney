@@ -1823,3 +1823,117 @@ dialog {
     /* Geser ke kiri tombol sidebar */
   }
 }
+
+/* ======================================================
+   14. POPUP BUTTON STYLE
+====================================================== */
+.popup-close-btn {
+  margin-top: 15px;
+  padding: 8px 20px;
+  background: var(--accent-blue, #0ea5e9);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.popup-close-btn:hover {
+  transform: scale(1.05);
+  background: #38bdf8;
+}
+
+/* FIX: Ensure popup is clickable and on top */
+.notif-popup {
+  pointer-events: auto !important;
+  z-index: 9999 !important;
+}
+
+/* ======================================================
+   15. LOADING OVERLAY
+====================================================== */
+#loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-dark, #0f172a);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  transition: opacity 0.5s ease;
+}
+
+#loading-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-content {
+  text-align: center;
+  color: #fff;
+}
+
+.loading-logo {
+  width: 200px;
+  margin-bottom: 20px;
+  animation: pulseLogo 2s infinite ease-in-out;
+}
+
+@keyframes pulseLogo {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.progress-container {
+  width: 300px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 15px auto;
+}
+
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  background: var(--accent-blue, #0ea5e9);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px var(--accent-blue, #0ea5e9);
+}
+
+#loadingText {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-top: 10px;
+}
+
+/* ======================================================
+   16. TURN INDICATOR (SAFE VISUALS)
+====================================================== */
+/* Gunakan box-shadow dan transform agar tidak merusak layout overflow:hidden */
+.player-info-box.active-turn {
+  /* Glow Effect via Box Shadow */
+  box-shadow:
+    0 0 0 3px var(--player-color, #fff),
+    /* Border palsu */
+    0 0 20px var(--player-color, rgba(255, 255, 255, 0.5)) !important;
+
+  /* Scale Up sedikit untuk fokus */
+  transform: scale(1.08) !important;
+  z-index: 100 !important;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}

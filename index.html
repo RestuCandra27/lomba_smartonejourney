@@ -5,12 +5,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SmartOne Journey</title>
-  <link rel="icon" href="assets/images/light-smartone.png" type="image/x-icon">
+  <link rel="icon" href="assets/images/mascot.png" type="image/x-icon">
   <link rel="stylesheet" href="assets/css/styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
 
 <body>
+  <!-- LOADING OVERLAY -->
+  <div id="loading-overlay">
+    <div class="loading-content">
+      <img src="assets/images/mascot.png" alt="Loading Logo" class="loading-logo">
+      <h2>Sedang Memuat...</h2>
+      <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <p id="loadingText">Menyiapkan aset permainan...</p>
+    </div>
+  </div>
   <!-- Landing screen (ID: screen-landing)
        Digunakan sebagai layar pembuka. Elemen penting:
        - `#gassMulaiBtn` -> membuka screen setup (lihat handler `gassMulaiBtn`).
