@@ -322,6 +322,8 @@ function nextTurn() {
   if (attempts > players.length) {
     alert("Permainan Selesai!");
     return;
+    alert("Permainan Selesai!");
+    return;
   }
 
 
