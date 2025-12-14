@@ -1270,8 +1270,34 @@ function startGameSession(playerCount, categoryKey) {
   // Reset flag
   isProcessingTurn = false;
 
-  document.getElementById("screen-setup").classList.remove("active");
-  document.getElementById("screen-game").classList.add("active");
+  // [UPDATED] TRANSISI CINEMA FADE (GLITCH FREE)
+  const overlay = document.getElementById("transition-overlay");
+  const setupScreen = document.getElementById("screen-setup");
+  const gameScreen = document.getElementById("screen-game");
+
+  // 1. Fade OUT (Layar jadi gelap)
+  overlay.classList.add("active");
+
+  // 2. Tunggu sampai gelap total (1.0s sesuai CSS transition)
+  setTimeout(() => {
+    // 3. Swap Screen di balik layar (saat gelap)
+    setupScreen.classList.remove("active");
+    gameScreen.classList.add("active");
+
+    // Pastikan posisi pion dll dirender ulang jika perlu
+    if (typeof placeAllPions === 'function') placeAllPions();
+
+    // 4. Fade IN (Layar kembali terang, menampilkan Game)
+    overlay.classList.remove("active");
+
+    // 5. Mulai musik (Bisa pas mulai terang, atau pas sudah terang total)
+    // "sebisa mungin semisal animasi nya udah kelar ... music langsung ngeplay"
+    // Kita play saat overlay mulai menghilang agar terasa responsif
+    setTimeout(() => {
+      playMusic();
+    }, 500);
+
+  }, 1200); // 1.0s transition + 200ms buffer aman
 
   // Hide modal if open (for restart case)
   const winnerModal = document.getElementById("winnerModal");
@@ -1282,8 +1308,8 @@ function startGameSession(playerCount, categoryKey) {
 
   setTimeout(placeAllPions, 150);
 
-  // Mulai Musik
-  playMusic();
+  // [DELETED] Moved playMusic to inside animation timeout
+  // playMusic();
 }
 
 function updatePlayerLevel(player) {
@@ -1352,30 +1378,43 @@ if (backBtnGame) {
   });
 }
 
+// 1. Refactor doExitGame untuk pakai Overlay Transition
 function doExitGame() {
-  document.getElementById("screen-game").classList.remove("active");
-  document.getElementById("screen-setup").classList.add("active");
+  const overlay = document.getElementById("transition-overlay");
+  const setupScreen = document.getElementById("screen-setup");
+  const gameScreen = document.getElementById("screen-game");
 
-  started = false;
-  turn = 0;
-  players = [];
-  isProcessingTurn = false;
+  // A. Fasde Out (Gelap)
+  if (overlay) overlay.classList.add("active");
 
-  // HAPUS BARIS 'diceEl.textContent = "🎲";' KARENA MENGHANCURKAN STRUKTUR 3D DADU.
+  setTimeout(() => {
+    // B. Reset State & Switch Screen di balik layar
+    gameScreen.classList.remove("active");
+    setupScreen.classList.add("active");
 
-  // PERBAIKAN: Hanya hapus kelas CSS dan reset atribut
-  diceEl.classList.remove("roll");
-  diceEl.removeAttribute("aria-disabled"); // Pastikan dice tidak dalam status 'disabled'
+    started = false;
+    turn = 0;
+    players = [];
+    isProcessingTurn = false;
 
-  // PERBAIKAN: Reset teks instruksi dadu (gunakan diceValueEl, bukan diceEl)
-  diceValueEl.textContent = "Lempar dadu!";
+    // Reset Dice Visuals
+    if (diceEl) {
+      diceEl.classList.remove("roll");
+      diceEl.removeAttribute("aria-disabled");
+    }
+    if (diceValueEl) diceValueEl.textContent = "Lempar dadu!";
 
-  // Reset pion dan info pemain
-  pionEls.forEach((p) => (p.style.display = "none"));
-  playerInfoBoxes.forEach((box) => (box.style.display = "none"));
+    // Reset Pion & Panels
+    pionEls.forEach((p) => (p.style.display = "none"));
+    playerInfoBoxes.forEach((box) => (box.style.display = "none"));
 
-  // Stop Musik
-  stopMusic();
+    // Stop Musik
+    stopMusic();
+
+    // C. Fade In (Terang kembali ke Setup)
+    if (overlay) overlay.classList.remove("active");
+
+  }, 1000); // 1.0s wait for fade out
 }
 
 
@@ -1504,21 +1543,11 @@ function showCustomModal(title, message, isWin = false, isTotalGameOver = true) 
       btnMenu.textContent = "Menu Utama";
       btnMenu.className = "btn-secondary";
       btnMenu.onclick = () => {
-        // Reset Manual UI & State
+        // Reset Manual UI & State via Transisi
         if (gameOverOverlay) gameOverOverlay.classList.remove('active');
-        document.getElementById("screen-game").classList.remove("active");
-        document.getElementById("screen-setup").classList.add("active");
 
-        // Stop all music
-        stopMusic();
-
-        // Reset variable global
-        started = false;
-        turn = 0;
-        players = [];
-        isProcessingTurn = false;
-        if (diceEl) diceEl.classList.remove("roll");
-        if (diceValueEl) diceValueEl.textContent = "Lempar dadu!";
+        // Panggil fungsi exit yang sudah ada transisinya
+        doExitGame();
       };
 
       btnGroup.appendChild(btnRestart);
@@ -1620,12 +1649,28 @@ const playAgainBtn = document.getElementById("playAgainBtn");
 
 if (backToMenuBtn) {
   backToMenuBtn.addEventListener("click", () => {
-    resetGameToMenu();
+    winnerModal.classList.remove("show");
+
+    // Matikan winner sound
+    if (winnerSound) {
+      winnerSound.pause();
+      winnerSound.currentTime = 0;
+    }
+
+    // Transisi Exit (Cinema Fade)
+    doExitGame();
   });
 }
 
 if (playAgainBtn) {
   playAgainBtn.addEventListener("click", () => {
+    winnerModal.classList.remove("show");
+
+    if (winnerSound) {
+      winnerSound.pause();
+      winnerSound.currentTime = 0;
+    }
+
     restartGame();
   });
 }
@@ -1716,9 +1761,6 @@ function updateTurnIndicator() {
   });
 }
 
-/* ======================================================
-   13. LOADING LOGIC
-====================================================== */
 /* ======================================================
    13. LOADING LOGIC
 ====================================================== */

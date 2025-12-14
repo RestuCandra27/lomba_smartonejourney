@@ -80,6 +80,28 @@ body {
   }
 }
 
+/* ======================================================
+/* ======================================================
+   TRANSISI ANTAR LAYAR (CINEMA FADE OVERLAY)
+====================================================== */
+#transition-overlay {
+  position: fixed;
+  inset: 0;
+  background: #05071b;
+  /* Warna gelap background */
+  z-index: 20000;
+  /* Paling atas */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1s ease-in-out;
+}
+
+#transition-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+  /* Block klik saat gelap */
+}
+
 /* Background Fokus Radial untuk Game Board */
 #screen-game {
   background: radial-gradient(circle at center, #1f2041 0%, #05071b 85%);
