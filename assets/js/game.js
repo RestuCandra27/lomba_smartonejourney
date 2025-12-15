@@ -1819,7 +1819,42 @@ function performInitialLoading() {
 
 // Init when DOM ready
 document.addEventListener("DOMContentLoaded", () => {
+  enableAutoFullscreen(); // [BARU] Coba fullscreen secepat mungkin
   performInitialLoading();
 });
+
+/**
+ * [BARU] enableAutoFullscreen
+ * Mencoba masuk fullscreen saat load (biasanya diblokir browser),
+ * jadi kita pasang fallback: klik PERTAMA di mana saja = Auto Fullscreen.
+ */
+function enableAutoFullscreen() {
+  const docEl = document.documentElement;
+  const requestFS = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+
+  if (!requestFS) return; // Browser gak support
+
+  // 1. Coba langsung (Best effort)
+  requestFS.call(docEl).catch(e => {
+    console.log("Auto-fullscreen blocked by browser (normal behavior). Waiting for user interaction.");
+  });
+
+  // 2. Fallback: Listener global "Click Anywhere"
+  // Sekali klik lgsg fullscreen, habis itu hapus listener biar gak ganggu.
+  const interactions = ["click", "touchstart", "keydown"];
+
+  const onUserInteract = () => {
+    requestFS.call(docEl).then(() => {
+      // Sukses -> Hapus listener
+      interactions.forEach(evt => document.removeEventListener(evt, onUserInteract));
+    }).catch(e => {
+      // Masih gagal? Biarin aja, mungkin user nolak permission
+      console.log("Fullscreen retry failed:", e);
+    });
+  };
+
+  interactions.forEach(evt => document.addEventListener(evt, onUserInteract, { once: true }));
+}
+
 
 // loadGameData(); // Moved to performInitialLoading
